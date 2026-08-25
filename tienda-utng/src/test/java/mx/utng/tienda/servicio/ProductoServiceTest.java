@@ -3,13 +3,14 @@ package mx.utng.tienda.servicio;
 import mx.utng.tienda.dao.ProductoDAO;
 import mx.utng.tienda.dao.ProductoDAOMemoria;
 import mx.utng.tienda.modelo.Producto;
+import mx.utng.tienda.excepciones.*; // IMPORTANTE: Importar las excepciones del dominio
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+// Se agrego assertAll para poder verificar multiples condiciones a la vez
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Pruebas unitarias de {@link ProductoService}, usando
@@ -59,6 +60,19 @@ class ProductoServiceTest {
                 "Registrar un producto nulo debe lanzar IllegalArgumentException");
     }
 
+    // NUEVO TEST DE LA RÚBRICA
+    @Test
+    @DisplayName("registrar_precioNegativo_lanzaPrecioInvalidoException")
+    void registrar_precioNegativo_lanzaPrecioInvalidoException() {
+        // Arrange
+        Producto producto = new Producto("MOU-002", "Mouse gamer", "Mouse con luces", -50.0, 10);
+
+        // Act & Assert
+        assertThrows(PrecioInvalidoException.class,
+                () -> productoService.registrar(producto),
+                "Registrar un producto con precio negativo debe lanzar PrecioInvalidoException");
+    }
+
     // ---------- vender ----------
 
     @Test
@@ -78,17 +92,35 @@ class ProductoServiceTest {
         assertEquals(25, stockRestante, "El stock debe reducirse en la cantidad vendida");
     }
 
+    // TEST ACTUALIZADO SEGÚN LA RÚBRICA
     @Test
-    @DisplayName("vender_conStockInsuficiente_lanzaIllegalStateException")
-    void vender_conStockInsuficiente_lanzaIllegalStateException() {
+    @DisplayName("vender_sinStock_verificaDetallesDeExcepcion")
+    void vender_sinStock_verificaDetallesDeExcepcion() {
         // Arrange
         Producto producto = new Producto("MOU-001", "Mouse inalambrico", "Mouse optico USB", 249.90, 3);
         productoService.registrar(producto);
 
-        // Act & Assert
-        assertThrows(IllegalStateException.class,
+        // Act
+        StockInsuficienteException excepcion = assertThrows(StockInsuficienteException.class,
                 () -> productoService.vender("MOU-001", 10),
-                "Vender mas unidades de las disponibles debe lanzar IllegalStateException");
+                "Vender mas unidades de las disponibles debe lanzar StockInsuficienteException");
+
+        // Assert: Verificamos los 3 detalles guardados en la excepción
+        assertAll("Verificando los parametros de la excepcion",
+                () -> assertEquals("MOU-001", excepcion.getCodigoProducto(), "El codigo debe coincidir"),
+                () -> assertEquals(3, excepcion.getStockActual(), "El stock actual era 3"),
+                () -> assertEquals(10, excepcion.getCantidadSolicitada(), "Se intentaron vender 10")
+        );
+    }
+
+    // NUEVO TEST DE LA RÚBRICA
+    @Test
+    @DisplayName("vender_productoInexistente_lanzaProductoNoEncontradoException")
+    void vender_productoInexistente_lanzaProductoNoEncontradoException() {
+        // Act & Assert
+        assertThrows(ProductoNoEncontradoException.class,
+                () -> productoService.vender("INEXISTENTE", 5),
+                "Vender un producto que no existe debe lanzar ProductoNoEncontradoException");
     }
 
     // ---------- calcularTotalConDescuento (TDD) ----------
@@ -96,7 +128,7 @@ class ProductoServiceTest {
     @Test
     @DisplayName("calcularTotalConDescuento_precioYDescuentoValidos_calculaElTotalCorrecto")
     void calcularTotalConDescuento_precioYDescuentoValidos_calculaElTotalCorrecto() {
-        // Arrange (RED: este fue el primer test escrito, antes de implementar el metodo)
+        // Arrange
         Producto producto = new Producto("MOU-001", "Mouse inalambrico", "Mouse optico USB", 100.0, 30);
         double descuento = 0.10;
 

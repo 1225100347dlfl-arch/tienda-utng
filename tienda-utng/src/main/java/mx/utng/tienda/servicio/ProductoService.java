@@ -2,6 +2,7 @@ package mx.utng.tienda.servicio;
 
 import mx.utng.tienda.dao.ProductoDAO;
 import mx.utng.tienda.modelo.Producto;
+import mx.utng.tienda.excepciones.*; // IMPORTANTE: Importar las nuevas excepciones
 
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +30,10 @@ public class ProductoService {
      * @param productoDAO implementacion de acceso a datos de productos
      */
     public ProductoService(ProductoDAO productoDAO) {
+        // Tarea 2: Validar que el DAO no sea nulo
+        if (productoDAO == null) {
+            throw new IllegalArgumentException("El DAO no puede ser nulo");
+        }
         this.productoDAO = productoDAO;
     }
 
@@ -40,10 +45,22 @@ public class ProductoService {
      * @throws IllegalArgumentException si el producto es nulo
      */
     public int registrar(Producto producto) {
+        // Tarea 2: Extraer validarProducto() privado
+        validarProducto(producto);
+        return productoDAO.insert(producto);
+    }
+
+    // Tarea 2: Método privado para validaciones
+    private void validarProducto(Producto producto) {
         if (producto == null) {
             throw new IllegalArgumentException("El producto no puede ser nulo");
         }
-        return productoDAO.insert(producto);
+        if (producto.getPrecio() < 0) {
+            throw new PrecioInvalidoException(producto.getPrecio());
+        }
+        if (producto.getStock() < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
     }
 
     /**
@@ -53,18 +70,24 @@ public class ProductoService {
      * @param codigo   codigo del producto vendido
      * @param cantidad cantidad vendida (debe ser mayor a cero)
      * @throws IllegalArgumentException si el codigo no existe o la cantidad no es valida
-     * @throws IllegalStateException    si el stock disponible es insuficiente
+     * @throws StockInsuficienteException si el stock disponible es insuficiente
      */
     public void vender(String codigo, int cantidad) {
+        // Tarea 2: Guard clauses al inicio
+        if (codigo == null || codigo.trim().isEmpty()) {
+            throw new IllegalArgumentException("El código no puede estar vacío");
+        }
         if (cantidad <= 0) {
             throw new IllegalArgumentException("La cantidad a vender debe ser mayor a cero");
         }
 
+        // Tarea 2: Usar ProductoNoEncontradoException
         Producto producto = productoDAO.findByCodigo(codigo)
-                .orElseThrow(() -> new IllegalArgumentException("No existe un producto con el codigo: " + codigo));
+                .orElseThrow(() -> new ProductoNoEncontradoException(codigo));
 
+        // Tarea 2: Usar StockInsuficienteException con 3 parámetros
         if (producto.getStock() < cantidad) {
-            throw new IllegalStateException("Stock insuficiente para el producto: " + codigo);
+            throw new StockInsuficienteException(codigo, producto.getStock(), cantidad);
         }
 
         productoDAO.updateStock(codigo, producto.getStock() - cantidad);
