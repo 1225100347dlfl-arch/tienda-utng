@@ -1,0 +1,6 @@
+# Copia este archivo como "db.properties" (en la misma carpeta) y coloca
+# tus credenciales reales. db.properties esta excluido por .gitignore,
+# por lo que NUNCA se sube al repositorio.
+db.url=jdbc:mysql://localhost:3306/utng_tienda?useSSL=false&serverTimezone=UTC
+db.usuario=TU_USUARIO
+db.password=TU_PASSWORD
